@@ -1,5 +1,14 @@
-import common::*;
-module ALU_control(
+`ifndef __ALU_CONTROL_SV
+`define __ALU_CONTROL_SV
+
+`ifdef VERILATOR
+`include "include/common.sv"
+`else
+
+`endif 
+
+module ALU_control
+    import common::*;(
     input logic [2:0] funct3,
     input logic [6:0] funct7,
     input logic [1:0] ctrl_ALU_op,
@@ -29,3 +38,4 @@ module ALU_control(
         endcase
     end   
 endmodule
+`endif

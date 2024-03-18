@@ -1,6 +1,13 @@
-import common::*;
+`ifndef __RF_SV
+`define __RF_SV
 
-module register_file(
+`ifdef VERILATOR
+`include "include/common.sv"
+`else
+
+`endif 
+module register_file
+    import common::*;(
     input logic clk,
     input logic rst,
     input u5 reg_0,reg_1,reg_w,
@@ -9,7 +16,6 @@ module register_file(
     input logic reg_w_ctrl,
     output logic [63 : 0] RF [32]
     );
-    
     
     assign r_data_0 = RF[reg_0];
     assign r_data_1 = RF[reg_1];
@@ -25,3 +31,4 @@ module register_file(
         end
     end
 endmodule
+`endif

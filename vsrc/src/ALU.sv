@@ -1,5 +1,13 @@
-import common::*;
-module ALU(
+`ifndef __ALU_SV
+`define __ALU_SV
+
+`ifdef VERILATOR
+`include "include/common.sv"
+`else
+
+`endif 
+module ALU
+    import common::*;(
     input u64 data_a,
     input u64 data_b,
     input ALU_CTR ALU_ctrl,
@@ -21,3 +29,4 @@ module ALU(
      end
      
 endmodule
+`endif

@@ -9,6 +9,8 @@
 `include "src/ALU.sv"
 `include "src/register_file.sv"
 `include "src/immediate_generator.sv"
+`include "src/store.sv"
+
 `endif
 module core import common::*;(
 	input  logic       clk, reset,
@@ -24,14 +26,22 @@ module core import common::*;(
 u64 pc ;
 u64 pc_add4;
 u32 ins;
+u32 ins_reg;
 OPC op;
+
+logic up_date;
+assign up_date = ((!(op == LOAD))&(!(op == STORE))&iresp.data_ok) || (mem_r&dresp.data_ok) || (mem_w&dresp.data_ok);
 
 initial begin
 	pc = PCINIT;
 end
 assign pc_add4 = pc + 4;
 assign op = ins[6:0];
-assign ins = iresp.data;
+
+always_ff @( posedge iresp.data_ok ) begin
+	ins_reg <= iresp.data;
+end
+assign ins = iresp.data;//???
 assign ireq.addr = pc;
 assign ireq.valid = 1;//???
 //Immediate
@@ -44,7 +54,6 @@ logic       ctrl_mem_w;
 logic       ctrl_mem_r;
 logic       ctrl_mem_to_reg;
 logic       ctrl_branch;  
-logic 		ctrl_auipc;
 
 //ALU
 ALU_CTR ALU_ctrl;
@@ -57,6 +66,12 @@ u64 reg_read_data_1;
 u64 data_a, data_w;
 u64 pc_next;
 
+//锁存
+u64 data_out_store;
+u5 targ;
+logic mem_w;
+logic mem_r;
+logic reg_w_store;
 
 logic [63 : 0] RF [32];
 logic [63 : 0] RF_next [32];
@@ -68,12 +83,35 @@ logic [63 : 0] RF_next [32];
 
 //data_memory
 u64 mem_read_data ;
+assign dreq.valid = mem_r || mem_w;
+assign dreq.addr = data_out_store;
+
+always_comb begin 
+	if(mem_r) begin
+		dreq.strobe = 0;
+		dreq.size = 3'b011;
+	end	
+	else if(mem_w) begin
+		dreq.strobe = 8'b11111111;
+		dreq.size = 3'b011;
+	end	
+	else begin
+		dreq.strobe = 0;
+		dreq.size = 3'b011;
+	end
+end
+//assign dreq.strobe = 0;
+assign dreq.data = RF[targ]; 
 assign mem_read_data = dresp.data;
 
+// MUX
 always_comb begin
     if (ctrl_reg_w) begin
         RF_next[ins[11:7]] = data_w;
     end
+	else if (reg_w_store) begin
+		RF_next[targ] = dresp.data;
+	end 
 	else RF_next[ins[11:7]] = RF[ins[11:7]];
 end // RF_next
 
@@ -101,9 +139,11 @@ program_counter program_counter(
     .clk(clk),
     .rst(reset),
 
+	.mem_r(mem_r),
+	.mem_w(mem_w),
 	.pc_next(pc_next),
     .pc(pc),
-	.pc_en(iresp.data_ok));
+	.pc_en(up_date));
 
 control_unit control_unit(
     .opcode(OPC'(ins[6:0])),
@@ -113,7 +153,6 @@ control_unit control_unit(
     .ctrl_mem_w(ctrl_mem_w),
     .ctrl_mem_r(ctrl_mem_r),
     .ctrl_mem_to_reg(ctrl_mem_to_reg),
-	.ctrl_auipc(ctrl_auipc),
     .ctrl_branch(ctrl_branch));
 
 ALU_control ALU_control(
@@ -134,31 +173,45 @@ register_file register_file(
     .rst(reset),
     .reg_0(ins[19:15]),
     .reg_1(ins[24:20]),
-    .reg_w(ins[11:7]),
+    .reg_w(op == LOAD || reg_w_store ?  targ : ins[11:7]),
     .r_data_0(reg_read_data_0),
     .r_data_1(reg_read_data_1),
-    .w_data(data_w),
-    .reg_w_ctrl(ctrl_reg_w),
+    .w_data(op == LOAD || reg_w_store ? dresp.data : data_w),
+    .reg_w_ctrl(op == LOAD || reg_w_store ? dresp.data_ok : ctrl_reg_w),
 	.RF(RF));
 
 immediate_generator immediate_generator(
     .ins(ins),
     .offset(offset));
 
+store store(
+	.ALU_data_out(ALU_data_out),
+	.rs2(op == STORE ? ins[24:20] : ins[11:7]),
+	.ctrl_mem_r(ctrl_mem_r),
+	.ctrl_mem_w(ctrl_mem_w),
+	.mem_r(mem_r),
+	.mem_w(mem_w),
+	.reg_w_store(reg_w_store),
+	.clk(clk),
+	.targ(targ),
+	.ok(dresp.data_ok),
+	.data_out_store(data_out_store)
+);
+
 `ifdef VERILATOR
 	DifftestInstrCommit DifftestInstrCommit(
 		.clock              (clk),
 		.coreid             (0),
 		.index              (0),
-		.valid              (iresp.data_ok),
+		.valid              (up_date),
 		.pc                 (pc),
-		.instr              (ins),
+		.instr              (ins_reg),
 		.skip               (0),
 		.isRVC              (0),
 		.scFailed           (0),
-		.wen                (ctrl_reg_w),
-		.wdest              ({3'b0,ins[11:7]}),
-		.wdata              (data_w)
+		.wen                (reg_w_store || ctrl_reg_w),
+		.wdest              (reg_w_store ? {3'b0,targ} : {3'b0,ins[11:7]}),
+		.wdata              (reg_w_store ? dresp.data : data_w)
 	);
 
 	DifftestArchIntRegState DifftestArchIntRegState (

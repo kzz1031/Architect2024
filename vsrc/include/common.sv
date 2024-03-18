@@ -79,7 +79,7 @@ package common;
 `ifdef VERILATOR
 `define PACKED_UNION union packed
 `else
-`define PACKED_UNION struct packed
+`define PACKED_UNION struct packed 
 `endif
 
 // simple compile-time assertion
