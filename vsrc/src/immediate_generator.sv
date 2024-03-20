@@ -1,6 +1,13 @@
-import common::*;
+`ifndef __IMM_SV
+`define __IMM_SV
 
-module immediate_generator(
+`ifdef VERILATOR
+`include "include/common.sv"
+`else
+
+`endif 
+module immediate_generator
+    import common::*;(
     input u32 ins,
     output logic signed [63 : 0] offset    
     );
@@ -23,3 +30,4 @@ module immediate_generator(
     
     assign offset = 64'(signed'(imm));
 endmodule
+`endif 

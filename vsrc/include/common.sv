@@ -41,12 +41,17 @@ package common;
 	typedef u8 strobe_t;
 	typedef u12 csr_addr_t;
 
-    typedef enum logic [2:0] {
-        AND = 3'b000,
-        OR  = 3'b001,
-        ADD = 3'b010,
-        SUB = 3'b110,
-        XOR = 3'b100
+    typedef enum logic [3:0] {
+        AND = 4'b0000,
+        OR  = 4'b0001,
+        ADD = 4'b0010,
+        SUB = 4'b0011,
+        XOR = 4'b0100,
+        SLL = 4'b0101,
+        SLT = 4'b0110,
+        SLTU = 4'b0111,
+        SRL = 4'b1000,
+        SRA = 4'b1001
       } ALU_CTR;
 
     typedef enum logic [6:0] {
@@ -60,6 +65,15 @@ package common;
         JAL     = 7'b1101111,
         JALR    = 7'b1100111
     } OPC;
+
+    typedef enum logic [2:0] {
+        BEQ     = 3'b000,
+        BNE     = 3'b001,
+        BLT     = 3'b100,
+        BGE     = 3'b101,
+        BLTU    = 3'b110,
+        BGEU    = 3'b111
+    } BRA;
 /**
  * this file contains basic definitions and typedefs for general designs.
  */
@@ -79,7 +93,7 @@ package common;
 `ifdef VERILATOR
 `define PACKED_UNION union packed
 `else
-`define PACKED_UNION struct packed
+`define PACKED_UNION struct packed 
 `endif
 
 // simple compile-time assertion
