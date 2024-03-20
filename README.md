@@ -1,5 +1,4 @@
-## RISC-V CPU Lab 2 Report     王镜凯 22300240022
-
+## RISC-V CPU Lab 2 Report    
 ### 1、运行结果
 
 ![image-20240317152351259](C:\Users\15027\AppData\Roaming\Typora\typora-user-images\image-20240317152351259.png)
